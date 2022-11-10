@@ -1,0 +1,268 @@
+# import dependencies
+from sklearn.ensemble import GradientBoostingClassifier
+import numpy as np
+import pandas as pd
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_classification
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+
+df = pd.read_excel("ClaimSupression.xlsx")
+
+print("Shape of the dataframe:", df.shape)
+print("\n")
+print("columns in the dataframe:", df.columns)
+print("\n")
+print("summary statistics:",df.describe())
+
+# create a new dataframe with the features we need.
+df_new = df[[
+    'Suppression_Mod',
+    'LegalStructure',
+    'Location_Mod',
+    'CoverageType',
+    'EmployerSize',
+    'Rate_Mod2',
+    'PreventionPortfolio',
+    'IndustrySubSector',
+    'Levied_Mod',
+    'ClearanceStatus_Mod',
+    'FinancialStatus_Mod',
+    'LatePayment_Mod',
+    ]]
+
+# create a dictionary with the data types of each column in the dataframe.
+dtype_dict = dict(df_new.dtypes)
+dtype_dict
+
+# create a list of the features with data type as 'O' and another list with datatype as 'int64'.
+categorical_features = [key for key in dtype_dict.keys() if dtype_dict[key] == 'O']
+
+numerical_features = [key for key in dtype_dict.keys() if dtype_dict[key] == 'int64']
+
+print("categorical features are:", categorical_features)
+print('\n')
+print("numerical features are:", numerical_features)
+
+# Inspecting the distribution of the target variable
+# plot the number of occurences of each value in the column Suppression_Mod as a bar chart.
+plt.figure(figsize=(10,5))
+sns.countplot(x='Suppression_Mod', data=df_new)
+plt.show()
+
+# Upsample the minority class of the target.
+df_new_majority = df_new[df_new['Suppression_Mod'] == 0]
+df_new_minority = df_new[df_new['Suppression_Mod'] == 1]
+
+df_new_minority_upsampled = resample(df_new_minority, 
+                                 replace=True,     
+                                 n_samples=len(df_new_majority),    
+                                 random_state=123)
+
+df_new_upsampled = pd.concat([df_new_majority, df_new_minority_upsampled])
+
+# Creating the needed functions for model building
+# create a dictionary to store the results of the models.
+results_dict = {}
+
+# create a function to fit the model and calculate the accuracy.
+def fit_model(model, model_name):
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    results_dict[model_name] = accuracy
+
+# create a function to print the results of the models.
+def print_results():
+    for key, value in results_dict.items():
+        print(key, ':', value)
+
+# create a function to plot the results of the models.
+def plot_results():
+    plt.figure(figsize=(10,5))
+    plt.bar(range(len(results_dict)), list(results_dict.values()), align='center')
+    plt.xticks(range(len(results_dict)), list(results_dict.keys()), rotation=45)
+    plt.show()
+
+# Model building with original dataset
+# One-hot encode the categorical features.
+df_new = pd.get_dummies(df_new, columns=categorical_features)
+
+# split the data into train and test sets.
+X_train, X_test, y_train, y_test = train_test_split(
+    df_new.drop("Suppression_Mod", axis=1),
+    df_new["Suppression_Mod"],
+    test_size=0.2,
+    random_state=42,
+)
+
+# create a list of the models we want to use.
+models = [
+    LogisticRegression(),
+    DecisionTreeClassifier(),
+    RandomForestClassifier(),
+    GradientBoostingClassifier(),
+    KNeighborsClassifier(),
+    SVC(),
+    GaussianNB(),
+]
+
+# fit the models and calculate the accuracy.
+for model in models:
+    fit_model(model, model.__class__.__name__)
+
+# print the results.
+print_results()
+
+# plot the results.
+plot_results()
+
+# write a loop that will print the f1_score, precision, recall and support for each model.
+for model in models:
+    y_pred = model.predict(X_test)
+    print(model.__class__.__name__)
+    print(classification_report(y_test, y_pred))
+    print('\n')
+
+
+# Write a loop that will plot the ROC Curve of models in one graph.
+from sklearn import metrics
+from sklearn.metrics import roc_curve
+from sklearn.metrics import auc
+
+plt.figure(figsize=(10,5))
+for model in models:
+    y_pred = model.predict(X_test)
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=model.__class__.__name__ + ' (area = %0.2f)' % roc_auc)
+
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.show()
+
+# Model building with upsampled dataset
+df_new = df[[
+    'Suppression_Mod',
+    'LegalStructure',
+    'Location_Mod',
+    'CoverageType',
+    'EmployerSize',
+    'Rate_Mod2',
+    'PreventionPortfolio',
+    'IndustrySubSector',
+    'Levied_Mod',
+    'ClearanceStatus_Mod',
+    'FinancialStatus_Mod',
+    'LatePayment_Mod',
+    ]]
+
+df_new_majority = df_new[df_new['Suppression_Mod'] == 0]
+df_new_minority = df_new[df_new['Suppression_Mod'] == 1]
+
+df_new_minority_upsampled = resample(df_new_minority, 
+                                 replace=True,     
+                                 n_samples=len(df_new_majority),    
+                                 random_state=123)
+
+df_new_upsampled = pd.concat([df_new_majority, df_new_minority_upsampled])
+
+
+df_new_upsampled = pd.get_dummies(df_new_upsampled, columns=categorical_features)
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df_new_upsampled.drop("Suppression_Mod", axis=1),
+    df_new_upsampled["Suppression_Mod"],
+    test_size=0.2,
+    random_state=42,
+)
+
+
+models = [
+    LogisticRegression(),
+    DecisionTreeClassifier(),
+    RandomForestClassifier(),
+    GradientBoostingClassifier(),
+    KNeighborsClassifier(),
+    SVC(),
+    GaussianNB(),
+]
+
+
+for model in models:
+    fit_model(model, model.__class__.__name__)
+
+
+print_results()
+plot_results()
+
+for model in models:
+    y_pred = model.predict(X_test)
+    print(model.__class__.__name__)
+    print(classification_report(y_test, y_pred))
+    print('\n')
+
+
+plt.figure(figsize=(10,5))
+for model in models:
+    y_pred = model.predict(X_test)
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=model.__class__.__name__ + ' (area = %0.2f)' % roc_auc)
+
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.show()
+
+
+# DecisionTreeClassifier is the most promising algorithm. Plot the confusion matrix for DecisionTreeClassifier.
+y_pred = DecisionTreeClassifier().fit(X_train, y_train).predict(X_test)
+cm = confusion_matrix(y_test, y_pred)
+
+plt.clf()
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Wistia)
+classNames = ['Negative','Positive']
+plt.title('Confusion Matrix - Test Data')
+plt.ylabel('True label')
+plt.xlabel('Predicted label')
+tick_marks = np.arange(len(classNames))
+plt.xticks(tick_marks, classNames, rotation=45)
+plt.yticks(tick_marks, classNames)
+s = [['TN','FP'], ['FN', 'TP']]
+for i in range(2):
+    for j in range(2):
+        plt.text(j,i, str(s[i][j])+" = "+str(cm[i][j]))
+plt.show()
+
+# Plot the feature importance of DecisionTreeClassifier.
+model = DecisionTreeClassifier().fit(X_train, y_train)
+
+plt.figure(figsize=(10,5))
+plt.bar(range(len(model.feature_importances_)), model.feature_importances_)
+plt.xticks(range(len(model.feature_importances_)), X_train.columns, rotation=90)
+plt.show()
+
+# Hyperparameter tuning of Random Forest Classifier
+model = RandomForestClassifier(bootstrap=0.1, max_depth=30, n_estimators = 75, max_features=5)
+
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+print(classification_report(y_test, y_pred))
+print('Mean accuracy: %.3f' % np.mean(scores))
+# print the mean of the fscore.
+print(classification_report(y_test, y_pred, output_dict=True)['weighted avg']['f1-score'])
+
+# plot the confusion matrix
