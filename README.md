@@ -1,4 +1,4 @@
-# Comparing Inflation Indecis, extracted from Statistics Canada
+# Comparing inflation indices, extracted from Statistics Canada
 Nima Zahedinameghi
 
 There are several other indices that we can use to supplement the Consumer Price Index (CPI). Some of these include the following:
